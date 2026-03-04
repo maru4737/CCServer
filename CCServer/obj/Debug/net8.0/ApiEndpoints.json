@@ -1,0 +1,60 @@
+[
+  {
+    "ContainingType": "CCServer.Controllers.ChatController",
+    "Method": "History",
+    "RelativePath": "api/chat/history",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "roomId",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "afterSeq",
+        "Type": "System.Int64",
+        "IsRequired": false
+      },
+      {
+        "Name": "limit",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CCServer.Controllers.ChatController",
+    "Method": "Send",
+    "RelativePath": "api/chat/send",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "CCServer.Controllers.ChatController\u002BSendRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CCServer.Controllers.ChatWsController",
+    "Method": "Get",
+    "RelativePath": "ws",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      }
+    ]
+  }
+]
