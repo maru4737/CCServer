@@ -6,30 +6,42 @@ public sealed class RoomHub
 {
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<Guid, WebSocketConnection>> _roomMembers = new();
 
-    public void Join(WebSocketConnection conn, string roomId)
+    public void Join(WebSocketConnection conn, string RoomId)
     {
-        var members = _roomMembers.GetOrAdd(roomId, _ => new ConcurrentDictionary<Guid, WebSocketConnection>());
+        var members = _roomMembers.GetOrAdd(RoomId, _ => new ConcurrentDictionary<Guid, WebSocketConnection>());
         members[conn.Id] = conn;
     }
 
     public void Leave(WebSocketConnection conn)
     {
-        var roomId = conn.RoomId;
-        if (string.IsNullOrWhiteSpace(roomId)) return;
+        var RoomId = conn.RoomId;
+        if (string.IsNullOrWhiteSpace(RoomId)) return;
 
-        if (_roomMembers.TryGetValue(roomId, out var members))
+        if (_roomMembers.TryGetValue(RoomId, out var members))
         {
             _ = members.TryRemove(conn.Id, out _);
             if (members.IsEmpty)
-                _ = _roomMembers.TryRemove(roomId, out _);
+                _ = _roomMembers.TryRemove(RoomId, out _);
         }
     }
 
-    public void BroadcastToRoom(string roomId, object envelope)
+    public int BroadcastToRoom(string RoomId, object envelope)
     {
-        if (!_roomMembers.TryGetValue(roomId, out var members)) return;
+        if (!_roomMembers.TryGetValue(RoomId, out var members)) return 0;
 
+        var ok = 0;
         foreach (var kv in members)
-            _ = kv.Value.TryEnqueue(envelope);
+        {
+            if (kv.Value.TryEnqueue(envelope))
+                ok++;
+        }
+        return ok;
     }
+
+    public int GetRoomMemberCount(string RoomId)
+    {
+        return _roomMembers.TryGetValue(RoomId, out var members) ? members.Count : 0;
+    }
+
+    
 }

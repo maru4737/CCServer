@@ -10,15 +10,15 @@ public sealed class RoomMessageStore
     // 방별 backlog 보관 개수(테스트용)
     private const int DefaultCapacity = 2_000;
 
-    public ChatMessage Append(string roomId, string user, string text, DateTimeOffset time, string senderId)
+    public ChatMessage Append(string RoomId, string user, string text, DateTimeOffset time, string senderId)
     {
-        var room = _rooms.GetOrAdd(roomId, _ => new RoomBuffer(DefaultCapacity));
-        return room.Append(roomId, user, text, time, senderId);
+        var room = _rooms.GetOrAdd(RoomId, _ => new RoomBuffer(DefaultCapacity));
+        return room.Append(RoomId, user, text, time, senderId);
     }
 
-    public IReadOnlyList<ChatMessage> GetAfter(string roomId, long afterSeq, int limit)
+    public IReadOnlyList<ChatMessage> GetAfter(string RoomId, long afterSeq, int limit)
     {
-        if (!_rooms.TryGetValue(roomId, out var room))
+        if (!_rooms.TryGetValue(RoomId, out var room))
             return Array.Empty<ChatMessage>();
 
         return room.GetAfter(afterSeq, limit);
@@ -33,10 +33,10 @@ public sealed class RoomMessageStore
 
         public RoomBuffer(int capacity) => _capacity = capacity;
 
-        public ChatMessage Append(string roomId, string user, string text, DateTimeOffset time, string senderId)
+        public ChatMessage Append(string RoomId, string user, string text, DateTimeOffset time, string senderId)
         {
             var seq = Interlocked.Increment(ref _seq);
-            var msg = new ChatMessage(seq, roomId, user, text, time, senderId);
+            var msg = new ChatMessage(seq, RoomId, user, text, time, senderId);
 
             lock (_lock)
             {

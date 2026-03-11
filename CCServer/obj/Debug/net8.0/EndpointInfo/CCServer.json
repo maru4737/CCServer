@@ -43,7 +43,7 @@
         ],
         "parameters": [
           {
-            "name": "roomId",
+            "name": "RoomId",
             "in": "query",
             "schema": {
               "type": "string"

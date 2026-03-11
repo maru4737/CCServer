@@ -122,3 +122,4 @@ C:\workspace\CCServer\CCServer\obj\Debug\net8.0\refint\CCServer.dll
 C:\workspace\CCServer\CCServer\obj\Debug\net8.0\CCServer.pdb
 C:\workspace\CCServer\CCServer\obj\Debug\net8.0\CCServer.genruntimeconfig.cache
 C:\workspace\CCServer\CCServer\obj\Debug\net8.0\ref\CCServer.dll
+C:\workspace\CCServer\CCServer\obj\Debug\net8.0\CCServer.sourcelink.json

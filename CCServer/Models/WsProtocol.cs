@@ -7,7 +7,7 @@ public sealed class WsClientEnvelope
     [JsonPropertyName("type")]
     public string Type { get; init; } = default!; // "join" | "send" | "ping"
 
-    [JsonPropertyName("roomId")]
+    [JsonPropertyName("RoomId")]
     public string? RoomId { get; init; }
 
     [JsonPropertyName("user")]
@@ -28,7 +28,7 @@ public sealed class WsServerEnvelope
     [JsonPropertyName("type")]
     public string Type { get; init; } = default!; // "joined" | "message" | "pong" | "error" | "backlog"
 
-    [JsonPropertyName("roomId")]
+    [JsonPropertyName("RoomId")]
     public string? RoomId { get; init; }
 
     [JsonPropertyName("payload")]

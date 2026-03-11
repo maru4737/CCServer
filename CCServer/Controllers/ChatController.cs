@@ -47,14 +47,14 @@ public sealed class ChatController : ControllerBase
     // REST로 backlog 조회 (WS 재연결 전에 사용 가능)
     [HttpGet("history")]
     public IActionResult History(
-        [FromQuery] string roomId,
+        [FromQuery] string RoomId,
         [FromQuery] long afterSeq = 0,
         [FromQuery] int limit = 200)
     {
-        if (string.IsNullOrWhiteSpace(roomId)) return BadRequest("roomId required");
+        if (string.IsNullOrWhiteSpace(RoomId)) return BadRequest("RoomId required");
         limit = Math.Clamp(limit, 1, 500);
 
-        var items = _store.GetAfter(roomId.Trim(), afterSeq, limit);
+        var items = _store.GetAfter(RoomId.Trim(), afterSeq, limit);
         return Ok(items);
     }
 }

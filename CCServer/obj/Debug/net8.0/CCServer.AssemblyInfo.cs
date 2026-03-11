@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CCServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6e86ff68061f6b02c3589162c7ded0e26c42249a")]
 [assembly: System.Reflection.AssemblyProductAttribute("CCServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CCServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

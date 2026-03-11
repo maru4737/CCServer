@@ -8,7 +8,7 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "roomId",
+        "Name": "RoomId",
         "Type": "System.String",
         "IsRequired": false
       },

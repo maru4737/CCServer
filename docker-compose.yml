@@ -3,24 +3,25 @@ services:
     image: apache/kafka:3.7.0
     container_name: kafka
     ports:
-      - "9092:9092"
+      - "9092:9092"   # 호스트(윈도우)에서 접속용
     environment:
-      # 단일 노드 KRaft
+      # KRaft 단일 노드
       KAFKA_NODE_ID: "1"
       KAFKA_PROCESS_ROLES: "broker,controller"
 
-      # 리스너 구성
-      # - 컨테이너 내부 바인딩
-      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
-      # - 클라이언트가 접속할 주소(중요)
-      #   로컬만이면 localhost, 서버/외부면 서버 IP로
-      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092"
+      # 리스너 2개:
+      # - EXTERNAL: 호스트(윈도우)에서 localhost:9092로 접속
+      # - INTERNAL: 다른 컨테이너(kafka-ui)가 kafka:29092로 접속
+      KAFKA_LISTENERS: "EXTERNAL://0.0.0.0:9092,INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "EXTERNAL://localhost:9092,INTERNAL://kafka:29092"
 
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+
       KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
       KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
 
-      # 단일 노드라 RF/ISR 1로
+      # 단일 노드 옵션
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
@@ -28,6 +29,19 @@ services:
 
     volumes:
       - kafka-data:/var/lib/kafka/data
+    restart: unless-stopped
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: "local"
+      # ✅ UI는 INTERNAL 리스너로 붙어야 함
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:29092"
     restart: unless-stopped
 
 volumes:

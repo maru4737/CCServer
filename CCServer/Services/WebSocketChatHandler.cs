@@ -1,5 +1,7 @@
 ﻿using CCServer.Kafka;
 using CCServer.Models;
+using CCServer.Utils;
+using Microsoft.Extensions.Logging;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -11,32 +13,52 @@ public sealed class WebSocketChatHandler
     private readonly RoomHub _hub;
     private readonly RoomMessageStore _store;
     private readonly IChatProducer _producer;
+    private readonly ILogger<WebSocketChatHandler> _log;
+    private readonly ILogger<WebSocketConnection> _connLog;
 
-    public WebSocketChatHandler(RoomHub hub, RoomMessageStore store, IChatProducer producer)
+    public WebSocketChatHandler(
+        RoomHub hub,
+        RoomMessageStore store,
+        IChatProducer producer,
+        ILogger<WebSocketChatHandler> log,
+        ILogger<WebSocketConnection> connLog)
     {
         _hub = hub;
         _store = store;
         _producer = producer;
+        _log = log;
+        _connLog = connLog;
     }
 
     public async Task HandleAsync(WebSocket socket, CancellationToken ct)
     {
-        var conn = new WebSocketConnection(socket);
+        // ✅ ServiceProvider 쓰지 말고 ILogger<WebSocketConnection> 직접 주입받아서 사용
+        var conn = new WebSocketConnection(socket, _connLog);
+
+        // SendLoop는 반드시 돌려야 실제 전송이 됩니다.
         var sendLoop = Task.Run(() => conn.SendLoopAsync(ct), ct);
+
+        _log.LogInformation("WS connected. ConnId={ConnId} State={State}", conn.Id, socket.State);
 
         try
         {
-            // 1) join 강제
             var joined = await ReceiveJoinAsync(conn, ct);
             if (!joined) return;
 
-            // 2) 이후 수신 루프
             await ReceiveLoopAsync(conn, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _log.LogError(ex, "WS handler error. ConnId={ConnId}", conn.Id);
         }
         finally
         {
+            // 방/연결 정리
             _hub.Leave(conn);
             conn.CompleteSendQueue();
+
+            _log.LogInformation("WS disconnected. ConnId={ConnId} Room={RoomId} User={User} State={State}",
+                conn.Id, conn.RoomId, conn.User, socket.State);
 
             try
             {
@@ -80,6 +102,10 @@ public sealed class WebSocketChatHandler
         conn.BindIdentity(roomId, user, senderId);
         _hub.Join(conn, roomId);
 
+        _log.LogInformation("JOIN ok. ConnId={ConnId} Room={RoomId} User={User} AfterSeq={AfterSeq}",
+            conn.Id, roomId, user, afterSeq);
+
+        // ✅ payload도 camelCase로 통일(클라 혼선 방지)
         conn.TryEnqueue(new WsServerEnvelope
         {
             Type = "joined",
@@ -87,8 +113,9 @@ public sealed class WebSocketChatHandler
             Payload = new { roomId, user }
         });
 
-        // backlog
         var backlog = _store.GetAfter(roomId, afterSeq, limit: 200);
+        _log.LogInformation("Backlog count={Count} Room={RoomId} AfterSeq={AfterSeq}", backlog.Count, roomId, afterSeq);
+
         if (backlog.Count > 0)
         {
             conn.TryEnqueue(new WsServerEnvelope
@@ -117,24 +144,25 @@ public sealed class WebSocketChatHandler
 
             if (string.Equals(env.Type, "send", StringComparison.OrdinalIgnoreCase))
             {
-                var roomId = conn.RoomId!;
-                var user = conn.User!;
-                var senderId = conn.SenderId!;
-
                 var text = env.Text?.Trim();
                 if (string.IsNullOrWhiteSpace(text)) continue;
 
-                // 브로드캐스트는 하지 않고 Kafka로만 발행
+                _log.LogInformation("WS SEND received. ConnId={ConnId} Room={RoomId} User={User} TextLen={Len}",
+                    conn.Id, conn.RoomId, conn.User, text.Length);
+
+                // ✅ Kafka로 보낼 JSON도 camelCase 통일
                 var payloadJson = JsonSerializer.Serialize(new
                 {
-                    RoomId = roomId,
-                    User = user,
-                    Text = text,
-                    Time = DateTimeOffset.UtcNow,
-                    SenderId = senderId
-                });
+                    roomId = conn.RoomId!,
+                    user = conn.User!,
+                    text,
+                    time = DateTimeOffset.UtcNow,
+                    senderId = conn.SenderId!
+                }, JsonDefaults.Web);
 
-                await _producer.PublishAsync(roomId, payloadJson, ct);
+                await _producer.PublishAsync(conn.RoomId!, payloadJson, ct);
+
+                _log.LogInformation("Kafka produced (awaited). Room={RoomId} User={User}", conn.RoomId, conn.User);
                 continue;
             }
 
@@ -156,13 +184,15 @@ public sealed class WebSocketChatHandler
 
             if (result.EndOfMessage) break;
 
-            // 너무 큰 메시지 방어(256KB)
+            // 너무 큰 메시지 방어
             if (ms.Length > 256 * 1024) return null;
         }
 
         var json = Encoding.UTF8.GetString(ms.ToArray());
+
         try
         {
+            // 클라 → 서버는 Pascal/camel 섞여도 일단 받게(필요하면 옵션 추가 가능)
             return JsonSerializer.Deserialize<WsClientEnvelope>(json);
         }
         catch (JsonException)
